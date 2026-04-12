@@ -6,7 +6,7 @@ Este jogo é um clone do clássico arcade de 1979, construído sobre um motor gr
 
 ## 🛠️ Tecnologias
 
-- **Linguagem:** Python 3.11+
+- **Linguagem:** Python
 - **Biblioteca:** Pygame
 - **Engine:** Customizada (Matrizes homogêneas e rasterização manual)
 
