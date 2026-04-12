@@ -1,37 +1,41 @@
-# Projeto Asteroids - Arquitetura Inicial
+# 🚀 Asteroids — Projeto de CG
 
-Restrição principal: **Desenho de primitivas na unha (Bresenham, Scanline, Transformações Matriciais).**
+Bem-vindo ao **Asteroids**, um projeto desenvolvido para a disciplina de **Computação Gráfica**.
 
-Projeto dividido em 3 camadas estritas.
+Este jogo é um clone do clássico arcade de 1979, construído sobre um motor gráfico 2D minimalista. O objetivo principal do projeto é a implementação manual de transformações geométricas (matrizes 3x3) e algoritmos de rasterização, utilizando o Pygame apenas como base para a janela e entrada.
 
-## 1. Motor Gráfico (Renderer / Rasterizer)
+## 🛠️ Tecnologias
 
-O "cego" para a lógica do jogo. Sua única responsabilidade é receber dados matemáticos (vértices e matrizes) e acender pixels na tela.
+- **Linguagem:** Python 3.11+
+- **Biblioteca:** Pygame
+- **Engine:** Customizada (Matrizes homogêneas e rasterização manual)
 
-- **Rasterização de Linhas:** Implementação do Algoritmo de Bresenham.
-- **Preenchimento de Polígonos:** Algoritmos de Scan-line ou Flood-fill.
-- **Transformações Geométricas (Afins):** Multiplicação de matrizes para translação, rotação e escala.
-  - Aplica a transformação de vetores e pontos através da notação matricial homogênea: $\mathbf{v'} = M \cdot \mathbf{v}$
-- **Contrato:** Só aceita arrays de vértices (pontos 2D) e cores. Não sabe o que é uma "Nave" ou um "Asteroide".
+## 📦 Como Rodar
 
-## 2. Física e Lógica de Jogo (Game State)
+### Localmente
 
-O "cego" para a tela. Cuida inteiramente das regras do universo do jogo usando matemática vetorial pura.
+Certifique-se de ter o Python instalado. Depois, instale o Pygame e execute o módulo principal:
 
-- **Entidades:** Representação matemática da Nave, Asteroides e Tiros (posição $x, y$, ângulo $\theta$).
-- **Cinemática:** Atualização de posições baseada em velocidade e aceleração vetorial ao longo do tempo.
-- **Detecção de Colisão:** Testes de interseção (ex: Bounding Box, Bounding Circle ou Point-in-Polygon).
-- **Contrato:** Expõe o estado atual dos objetos (seus vértices no _Espaço do Mundo_) para que o Core possa repassá-los ao Motor Gráfico.
+```bash
+pip install pygame
+python -m src.main
+```
 
-## 3. Core / Game Loop
+### Via Docker
 
-O maestro da aplicação. É a ponte entre o sistema operacional (I/O) e os dois módulos acima.
+Se preferir, utilize o Docker para rodar o projeto em um ambiente isolado:
 
-- **Input:** Captura eventos de teclado/mouse e repassa como "comandos" para o módulo de Física (ex: `nave.acelerar()`, `nave.girar()`).
-- **Tempo:** Gerencia o `delta_time` para garantir que a física seja consistente independente do framerate.
-- **Orquestração:**
-  1. Lê input.
-  2. Atualiza Física(delta_time).
-  3. Limpa tela.
-  4. Pega os vértices atualizados da Física e manda o Motor Gráfico desenhar.
-  5. Atualiza o display (Swap buffers).
+```bash
+docker build -t asteroids-cg .
+docker run -it asteroids-cg
+```
+
+## 🎮 Controles
+
+- **Setas:** Movimentação (Rotação e Aceleração com inércia).
+- **Espaço:** Disparo de projéteis.
+- **Esc / P:** Pausar ou sair.
+
+---
+
+_Este é um projeto estritamente acadêmico._
