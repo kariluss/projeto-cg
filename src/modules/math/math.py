@@ -5,15 +5,15 @@ class Matrix:
         self.data = data or [[0 for _ in range(cols)] for _ in range(rows)]
 
     def __matmul__(self, other):
-        # Esta única função resolve:
-        # 1. Matriz 3x3 @ Matriz 3x3
-        # 2. Matriz 3x3 @ Matriz 3xN (Batch de pontos)
-        # 3. Matriz 3x3 @ Matriz 3x1 (único ponto)
-        
         result = Matrix(self.rows, other.cols)
-        
+
         for i in range(self.rows):
             for j in range(other.cols):
                 for k in range(self.cols):
                     result.data[i][j] += self.data[i][k] * other.data[k][j]
         return result
+    
+    @property
+    def T(self):
+        t = [list(t) for t in list(zip(*self.data))]
+        return Matrix(len(t), len(t[0]), t)
