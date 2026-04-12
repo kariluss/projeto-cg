@@ -26,7 +26,7 @@ class Matrix:
         """
         if self.cols != other.rows:
             raise ValueError(f'Number of columns of self ({self.cols}) must be equal to the number of rows of other ({other.rows})')
-        ,
+        
         result = Matrix(self.rows, other.cols)
 
         for i in range(self.rows):
