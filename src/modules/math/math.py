@@ -17,3 +17,8 @@ class Matrix:
     def T(self):
         t = [list(t) for t in list(zip(*self.data))]
         return Matrix(len(t), len(t[0]), t)
+
+# escala = Matrix(3, 3, [[2,0,0],[0,2,0],[0,0,1]])
+# pontos  = Matrix(3, 6, [[1,2,1],[4,5,1],[7,8,1],[3,3,1],[1,1,1],[2,8,1]])
+# escalado = escala @ pontos.T -> precisa transpor para ser posto no modelo colunar onde os vetores estão nas colunas "em pé"
+# escalado.T.data
