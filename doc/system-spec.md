@@ -7,17 +7,16 @@ O sistema é um motor gráfico 2D minimalista construído sobre o `Pygame`. Ele 
 ## 2. Architecture Layers
 
 - `Core`: Gerencia o _Game Loop_, o estado global (pausado, rodando, game over) e processamento de eventos do sistema.
-- `Physics`: Camada de abstração matemática para vetores ($2D$) e inércia.
+- `Math`: O núcleo matemático do projeto. Provê abstrações de Álgebra Linear, cálculos vetoriais e transformações afins utilizando Matrizes $3 \times 3$ em coordenadas homogêneas.
+- `Physics`: Camada de lógica física que utiliza o módulo `Math`.
 - `Graphics`: Módulo de renderização bruta (`Bresenham`, `Scan-line`) que recebe listas de vértices.
-- `Math`: Módulo de utilidades para transformações afins (Matrizes $3 \times 3$, rotações, translações, vetores).
 - `Game`: Controla os pontos, ondas de asteroides, etc.
 - `Entities`: Classes (`Ship`, `Asteroid`, `Bullet`) que mantêm o estado e a lógica comportamental.
 
 ## 3. Technical Constraints
 
 - A renderização deve ser feita frame a frame, limpando e redesenhando a tela.
-- **Matrizes:** Operações de transformações devem ser realizadas via multiplicação de matrizes 3x3 (homogêneas) no módulo `Math` que é e precisa ser uma implementação própria para fim educacional.
-- **Rastreio:** A detecção de colisão deve ser feita via _Bounding Boxes_ ou distância euclidiana simples.
+- **Matemática:** O módulo `Math` é a base para todos os cálculos do sistema (vetoriais e matriciais).
 
 ## 4. Data Model
 
@@ -25,11 +24,6 @@ O sistema é um motor gráfico 2D minimalista construído sobre o `Pygame`. Ele 
 
 - Representados como `tuple` ou `list` $[x, y, 1]$.
 - O espaço do modelo deve ser normalizado antes de qualquer transformação.
-
-### Matrizes
-
-- Matrizes $3 \times 3$ seguindo a convenção de coordenadas homogêneas para 2D.
-- Ordem de aplicação: $P_{world} = T \times R \times S \times P_{model}$.
 
 ## 5. Rendering Pipeline
 
