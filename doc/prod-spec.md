@@ -9,8 +9,8 @@ Criar um jogo de arcade 2D baseado no clássico Asteroids (1979). O jogador deve
 - O jogador controla uma nave.
 - Asteroides vagam pelo espaço em direções e velocidades aleatórias e constantes.
 - O jogador atira projéteis para destruir os asteroides.
-- Ao ser atingido, o asteroide se divide em pedaços menores e mais rápidos.
-- O número de asteroides e sua velocidade aumentam com o tempo.
+- Ao ser atingido, o asteroide se divide em dois pedaços menores. Um pedaço viaja lentamente em direção ao Jogador (Homing), enquanto o outro segue uma trajetória aleatória para evitar previsibilidade.
+- O número de asteroides e sua velocidade aumentam com o tempo, porém existe um limite técnico de asteroides pequenos simultâneos para garantir a performance da rasterização.
 - O jogo termina quando o jogador perde todas as suas vidas.
 
 ## 3. Game Entities
