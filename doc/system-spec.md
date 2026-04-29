@@ -4,26 +4,27 @@
 
 O sistema é um motor gráfico 2D minimalista construído sobre o `Pygame`. Ele opera no modo "pixel-perfect" e gerencia o pipeline de renderização a partir de uma estrutura de dados de vértices.
 
-## 2. Architecture Layers
+## 2. Architecture Layers (Strict Layering)
 
-- `Core`: Gerencia o _Game Loop_, o estado global (pausado, rodando, game over) e processamento de eventos do sistema.
-- `Math`: O núcleo matemático do projeto. Provê abstrações de Álgebra Linear, cálculos vetoriais e transformações afins utilizando Matrizes $3 \times 3$ em coordenadas homogêneas.
-- `Physics`: Camada de lógica física que utiliza o módulo `Math`.
-- `Graphics`: Módulo de renderização bruta (`Bresenham`, `Scan-line`) que recebe listas de vértices.
-- `Game`: Controla os pontos, ondas de asteroides, etc.
-- `Entities`: Classes (`Ship`, `Asteroid`, `Bullet`) que mantêm o estado e a lógica comportamental.
+- `Core`: Gerencia o _Game Loop_, o estado global (pausado, rodando, game over) e orquestra a comunicação entre os sistemas.
+- `Math`: O núcleo matemático do projeto. Provê abstrações de Álgebra Linear. **Nenhuma outra camada deve implementar cálculos matriciais próprios.**
+- `Physics System`: Sistema que processa a movimentação, inércia e colisões. As entidades **não** processam sua própria física.
+- `Graphics System`: Módulo de renderização bruta (`Bresenham`, `Scan-line`) e a Pipeline de Transformação. As entidades **não** possuem métodos de desenho.
+- `Game`: Gerenciamento de regras de alto nível (pontuação, ondas).
+- `Entities`: Recipientes puros de dados (Data Models). Contêm apenas estado (posição, velocidade, vértices locais, etc). **Proibido importar Pygame ou Graphics nestas classes.**
 
 ## 3. Technical Constraints
 
 - A renderização deve ser feita frame a frame, limpando e redesenhando a tela.
 - **Matemática:** O módulo `Math` é a base para todos os cálculos do sistema (vetoriais e matriciais).
+- **Performance:** Devido ao custo computacional da rasterização via Scan-line em Python, o sistema limita o número máximo de asteroides pequenos simultâneos (`MAX_SMALL_ASTEROIDS`) para evitar quedas bruscas de FPS.
 
 ## 4. Data Model
 
 ### Vértices
 
 - Representados como `tuple` ou `list` $[x, y, 1]$.
-- O espaço do modelo deve ser normalizado antes de qualquer transformação.
+- **Normalização:** O espaço do modelo **deve** ser normalizado entre $[-1, 1]$ no arquivo da entidade. O tamanho real deve ser definido por uma Matriz de Escala durante a renderização.
 
 ## 5. Rendering Pipeline
 

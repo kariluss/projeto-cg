@@ -19,11 +19,7 @@ class CollisionSystem:
         """
         dx = center2[0] - center1[0]
         dy = center2[1] - center1[1]
-        
-        # Distância entre os centros (Teorema de Pitágoras)
         distance = math.sqrt(dx**2 + dy**2)
-        
-        # Há colisão se a distância é menor que a soma dos raios
         return distance < (radius1 + radius2)
     
     @staticmethod
