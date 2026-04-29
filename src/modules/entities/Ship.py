@@ -3,14 +3,14 @@ from src.modules.entities.Entity import Entity
 
 class Ship(Entity):
     def __init__(self):
-        super().__init__(Matrix(3, 3, [
-            [ 0.0, -1.0,  1.0],
-            [-1.0,  1.0,  1.0],
-            [ 1.0,  1.0,  1.0]
+        super().__init__(Matrix(3, 14, [
+            [ 0.0,  0.1,  0.4,  0.9,  0.6,  0.3,  0.1,  0.0, -0.1, -0.3, -0.6, -0.9, -0.4, -0.1],
+            [-1.0, -0.7, -0.2,  0.5,  0.5,  0.3,  0.8,  0.6,  0.8,  0.3,  0.5,  0.5, -0.2, -0.7],
+            [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0]
         ]))
         
         self.color = (255, 255, 255)
-        self.radius = 10
+        self.radius = 13
         
         self.velocity = [0.0, 0.0]
         self.acceleration = 0.2
