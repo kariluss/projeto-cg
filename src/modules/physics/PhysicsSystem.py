@@ -1,5 +1,6 @@
 import math
-from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from src.modules.math.math import magnitude, from_angle
 
 class PhysicsSystem:
     @staticmethod
@@ -12,7 +13,7 @@ class PhysicsSystem:
             entity.velocity[1] *= entity.friction
         
         if hasattr(entity, 'max_speed'):
-            speed = math.sqrt(entity.velocity[0]**2 + entity.velocity[1]**2)
+            speed = magnitude(entity.velocity)
             if speed > entity.max_speed:
                 entity.velocity[0] = (entity.velocity[0] / speed) * entity.max_speed
                 entity.velocity[1] = (entity.velocity[1] / speed) * entity.max_speed
@@ -37,3 +38,17 @@ class PhysicsSystem:
     def update_all(entities):
         for entity in entities:
             PhysicsSystem.update_entity(entity)
+
+    @staticmethod
+    def apply_controls(entity, thrust_active, rotation_input):
+        entity.rotation += rotation_input * 4
+        if thrust_active:
+            rad = math.radians(entity.rotation)
+            thrust_vec = from_angle(rad, entity.acceleration)
+            entity.velocity[0] += thrust_vec[0]
+            entity.velocity[1] += thrust_vec[1]
+            
+    @staticmethod
+    def calculate_bullet_velocity(rotation, speed):
+        rad = math.radians(rotation)
+        return from_angle(rad, speed)

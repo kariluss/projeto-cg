@@ -140,5 +140,42 @@ def get_window_to_viewport_matrix(w_xmin, w_ymin, w_xmax, w_ymax, v_xmin, v_ymin
     # 4. Matriz de translação para a posição da Viewport
     m_trans_viewport = get_translation_matrix(v_xmin, v_ymin)
     
-    # A ordem de multiplicação é da direita para a esquerda: M = Tv * S * To
     return m_trans_viewport @ m_escala @ m_trans_origem
+
+# Vector Utilities
+
+import math as python_math
+
+def distance(p1, p2):
+    """Calculate Euclidean distance between two points [x, y]"""
+    return python_math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def magnitude(v):
+    """Calculate magnitude of a 2D vector [x, y]"""
+    return python_math.sqrt(v[0]**2 + v[1]**2)
+
+def normalize(v):
+    """Normalize a 2D vector [x, y]"""
+    mag = magnitude(v)
+    if mag == 0:
+        return [0.0, 0.0]
+    return [v[0] / mag, v[1] / mag]
+
+def from_angle(angle, length=1.0):
+    """Create a 2D vector [x, y] from an angle (in radians) and length"""
+    return [length * python_math.sin(angle), length * -python_math.cos(angle)] # Inverted y for Pygame coordinates standard used in engine
+
+import random
+
+def vector_from_points(p1, p2, speed=1.0):
+    """Returns a velocity vector pointing from p1 to p2 with given speed"""
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    mag = magnitude([dx, dy])
+    if mag == 0: return [0.0, 0.0]
+    return [(dx / mag) * speed, (dy / mag) * speed]
+
+def random_direction(speed=1.0):
+    """Returns a random 2D velocity vector [vx, vy]"""
+    angle = random.uniform(0, 2 * python_math.pi)
+    return [speed * python_math.cos(angle), speed * python_math.sin(angle)]

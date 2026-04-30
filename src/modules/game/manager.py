@@ -1,22 +1,35 @@
 import random
-import math
-from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT, MAX_SMALL_ASTEROIDS
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, MAX_SMALL_ASTEROIDS
 from src.modules.entities.Asteroid import Asteroid
+from src.modules.math.math import vector_from_points, random_direction
 
 class GameManager:
     
+    # Quantos pontos equivalem a +1 no alvo de asteroides grandes
+    SCORE_PER_DIFFICULTY_STEP = 500
+    BASE_LARGE_ASTEROIDS = 4
+    MAX_LARGE_ASTEROIDS = 12
+
     def __init__(self):
         self.score = 0
         self.lives = 7
-        self.wave = 1
-        self.target_large_asteroids = 0
-        self.asteroids_destroyed_this_wave = 0
 
-    def start_new_wave(self, asteroids_list):
-        self.target_large_asteroids = 3 + self.wave
-        self.asteroids_destroyed_this_wave = 0
-        
-        for _ in range(self.target_large_asteroids):
+    def _target_large_count(self):
+        """Calcula quantos asteroides grandes devem existir simultaneamente com base no score atual."""
+        steps = self.score // self.SCORE_PER_DIFFICULTY_STEP
+        return min(self.BASE_LARGE_ASTEROIDS + steps, self.MAX_LARGE_ASTEROIDS)
+
+    def initialize(self, asteroids_list):
+        """Popula a tela com o número inicial de asteroides grandes para iniciar o jogo."""
+        for _ in range(self.BASE_LARGE_ASTEROIDS):
+            pos = self._get_random_edge_position()
+            asteroids_list.append(Asteroid(pos, Asteroid.SIZE_LARGE))
+
+    def update_difficulty(self, asteroids_list):
+        """Garante que o número de asteroides grandes na tela reflita a dificuldade atual do score."""
+        current_large = sum(1 for a in asteroids_list if a.size == Asteroid.SIZE_LARGE)
+        target = self._target_large_count()
+        if current_large < target:
             pos = self._get_random_edge_position()
             asteroids_list.append(Asteroid(pos, Asteroid.SIZE_LARGE))
 
@@ -30,46 +43,41 @@ class GameManager:
         return [x, y]
 
     def handle_offscreen_asteroid(self, asteroid, asteroids_list):
+        """Respawna o asteroide na borda oposta com o MESMO tamanho, preservando o progresso do jogador."""
         asteroid.alive = False
-        
-        current_small = sum(1 for a in asteroids_list if a.size == Asteroid.SIZE_SMALL)
-        if current_small >= MAX_SMALL_ASTEROIDS:
+
+        # Pequenos fora da tela não são repostos: o jogador limpou, ele some.
+        if asteroid.size == Asteroid.SIZE_SMALL:
             return
 
-        current_large = sum(1 for a in asteroids_list if a.size == Asteroid.SIZE_LARGE)
-        size = Asteroid.SIZE_LARGE if current_large < self.target_large_asteroids else Asteroid.SIZE_MEDIUM
-        
+        # Grandes e Médios voltam com seu próprio tamanho em posição e direção aleatória,
+        # simulando um universo maior do que a janela.
         pos = self._get_random_edge_position()
-        replacement = Asteroid(pos, size)
-        
-        # Velocidade baixa para respawns
+        replacement = Asteroid(pos, asteroid.size)
         low_speed = random.uniform(0.5, 1.2)
-        angle = random.uniform(0, 2 * math.pi)
-        replacement.velocity = [low_speed * math.cos(angle), low_speed * math.sin(angle)]
-        
+        replacement.velocity = random_direction(low_speed)
         asteroids_list.append(replacement)
 
     def handle_asteroid_destruction(self, asteroid, asteroids_list, ship_position):
         self.score += asteroid.points
         asteroid.alive = False
-        
-        if asteroid.size == Asteroid.SIZE_LARGE:
-            self.asteroids_destroyed_this_wave += 1
             
         if asteroid.size > Asteroid.SIZE_SMALL:
             new_size = asteroid.size - 1
             
-            dx = ship_position[0] - asteroid.position[0]
-            dy = ship_position[1] - asteroid.position[1]
-            h_angle = math.atan2(dy, dx)
-            asteroids_list.append(Asteroid(asteroid.position.copy(), new_size, [1.0 * math.cos(h_angle), 1.0 * math.sin(h_angle)]))
-            
-            r_angle = random.uniform(0, 2 * math.pi)
-            speed = asteroid.SIZE_CONFIG[new_size]["speed_factor"] * 2.0
-            asteroids_list.append(Asteroid(asteroid.position.copy(), new_size, [speed * math.cos(r_angle), speed * math.sin(r_angle)]))
+            # Checar limite de performance: Small Asteroids
+            if new_size == Asteroid.SIZE_SMALL:
+                current_small = sum(1 for a in asteroids_list if a.size == Asteroid.SIZE_SMALL)
+                # Mais 2 serão criados, garante que não explodirá o threshold bruscamente
+                if current_small + 2 > MAX_SMALL_ASTEROIDS:
+                    return
 
-    def check_wave_completion(self, asteroids_list):
-        if len(asteroids_list) == 0:
-            self.wave += 1
-            return True
-        return False
+            # Asteroid 1: Direção guiada para a nave (homing)
+            homing_velocity = vector_from_points(asteroid.position, ship_position, speed=1.0)
+            asteroids_list.append(Asteroid(asteroid.position.copy(), new_size, homing_velocity))
+            
+            # Asteroid 2: Direção aleatória
+            speed = asteroid.SIZE_CONFIG[new_size]["speed_factor"] * 2.0
+            asteroids_list.append(Asteroid(asteroid.position.copy(), new_size, random_direction(speed)))
+
+

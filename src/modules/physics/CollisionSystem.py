@@ -1,7 +1,7 @@
-import math
+from src.modules.math.math import distance
 
 class CollisionSystem:
-    """Sistema de colisão círculo-círculo usando Teorema de Pitágoras"""
+    """Sistema de colisão círculo-círculo usando Matemática do sistema"""
     
     @staticmethod
     def check_collision(center1, radius1, center2, radius2):
@@ -17,10 +17,7 @@ class CollisionSystem:
         Returns:
             bool - True se há colisão, False caso contrário
         """
-        dx = center2[0] - center1[0]
-        dy = center2[1] - center1[1]
-        distance = math.sqrt(dx**2 + dy**2)
-        return distance < (radius1 + radius2)
+        return distance(center1, center2) < (radius1 + radius2)
     
     @staticmethod
     def check_bullet_asteroid_collisions(bullets, asteroids):
