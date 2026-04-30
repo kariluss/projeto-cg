@@ -3,14 +3,14 @@ import sys
 import math
 import random
 from src.settings import *
-from src.modules.graphics.main import bresenham, scanline_fill, setPixel
-from src.modules.math.math import Matrix, get_translation_matrix, get_rotation_matrix, get_scale_matrix
 from src.modules.entities.Ship import Ship
 from src.modules.entities.Asteroid import Asteroid
 from src.modules.entities.Bullet import Bullet
 from src.modules.physics.CollisionSystem import CollisionSystem
 from src.modules.physics.PhysicsSystem import PhysicsSystem
 from src.modules.game.manager import GameManager
+from src.modules.graphics.main import bresenham, scanline_fill, setPixel, sutherland_hodgman_clip, desenhar_poligono_bordas, scanline_texture
+from src.modules.math.math import Matrix, get_translation_matrix, get_rotation_matrix, get_scale_matrix, get_window_to_viewport_matrix
 
 class GameEngine:
     def __init__(self):
@@ -21,6 +21,22 @@ class GameEngine:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = "RUNNING"
+        
+        # CARREGANDO A TEXTURA DA LUA
+        # (Certifique-se de ter um arquivo 'moon.jpg' na mesma pasta onde roda o script)
+        try:
+            self.moon_texture_30p = pygame.image.load("./assets/moon-8bit-30p.png").convert()
+            self.moon_texture_20p = pygame.image.load("./assets/moon-8bit-20p.png").convert()
+            self.moon_texture_10p = pygame.image.load("./assets/moon-8bit-10p.png").convert()
+        except:
+            print("AVISO: 'moon-8bit-30p.png', 'moon-8bit-20p.png', 'moon-8bit-10p.png' não encontrada! Criando textura roxa de fallback.")
+            self.moon_texture_30p = pygame.Surface((128, 128))
+            self.moon_texture_30p.fill((150, 0, 150))
+            self.moon_texture_20p = pygame.Surface((128, 128))
+            self.moon_texture_20p.fill((150, 0, 150))
+            self.moon_texture_10p = pygame.Surface((128, 128))
+            self.moon_texture_10p.fill((150, 0, 150))
+            
         self.ship = Ship()
         self.ship.position = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
         self.bullets = []
@@ -114,24 +130,88 @@ class GameEngine:
     def _render(self):
         self.screen.fill(BLACK)
         
+        # 1. RENDERIZAÇÃO DA TELA PRINCIPAL (O MUNDO)
         ship_pts = self._get_polygon_points(self.ship)
         scanline_fill(self.screen, ship_pts, self.ship.color)
         
         for a in self.asteroids:
             ast_pts = self._get_polygon_points(a)
-            scanline_fill(self.screen, ast_pts, a.color)
+            if a.radius == 30:
+                scanline_texture(self.screen, ast_pts, a.uvs, self.moon_texture_30p)
+            elif a.radius == 20:
+                scanline_texture(self.screen, ast_pts, a.uvs, self.moon_texture_20p)
+            elif a.radius == 10:
+                scanline_texture(self.screen, ast_pts, a.uvs, self.moon_texture_10p)
+            # Opcional: deixar as bordas brancas pra dar um destaque, ou remover.
+            #desenhar_poligono_bordas(self.screen, ast_pts, WHITE)
+        
+        #for a in self.asteroids:
+        #    ast_pts = self._get_polygon_points(a)
+        #    desenhar_poligono_bordas(self.screen, ast_pts, WHITE)
             
         for b in self.bullets:
             bx, by = int(round(b.position[0])), int(round(b.position[1]))
             for dx in range(-1, 2):
                 for dy in range(-1, 2):
-                    if 0 <= bx+dx < SCREEN_WIDTH and 0 <= by+dy < SCREEN_HEIGHT: setPixel(self.screen, bx+dx, by+dy, b.color)
+                    if 0 <= bx+dx < SCREEN_WIDTH and 0 <= by+dy < SCREEN_HEIGHT: 
+                        setPixel(self.screen, bx+dx, by+dy, b.color)
         
+        # ==============================================================
+        # 2. RENDERIZAÇÃO DO RADAR (MINIMAPA) USANDO VIEWPORT E CLIPPING
+        # ==============================================================
+        
+        # Dimensões da Viewport do Radar (canto inferior direito)
+        VP_WIDTH, VP_HEIGHT = 150, 150
+        v_xmin = SCREEN_WIDTH - VP_WIDTH - 20
+        v_ymin = SCREEN_HEIGHT - VP_HEIGHT - 20
+        v_xmax = v_xmin + VP_WIDTH
+        v_ymax = v_ymin + VP_HEIGHT
+
+        # Matriz que transforma o Mundo inteiro para dentro do Radar
+        matrix_radar = get_window_to_viewport_matrix(
+            0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,  # Mundo
+            v_xmin, v_ymin, v_xmax, v_ymax      # Viewport do Radar
+        )
+
+        # Desenhar a borda do Radar (uma linha ao redor)
+        pygame.draw.rect(self.screen, WHITE, (v_xmin, v_ymin, VP_WIDTH, VP_HEIGHT), 1)
+
+        # Função auxiliar para renderizar entidades no Radar
+        def render_on_radar(entity, is_ship=False):
+            # Obtém os vértices no espaço do mundo
+            world_pts = self._get_polygon_points(entity)
+            
+            # Transforma os vértices do Mundo para a Viewport do Radar
+            radar_pts = []
+            for x, y in world_pts:
+                # Cria vetor [x, y, 1] e multiplica pela matriz do radar
+                vec = Matrix(3, 1, [[x], [y], [1]])
+                vec_transformed = matrix_radar @ vec
+                radar_pts.append((vec_transformed.data[0][0], vec_transformed.data[1][0]))
+
+            # CLIPPING: Corta o que vazar do radar para não sujar a tela
+            clipped_pts = sutherland_hodgman_clip(radar_pts, v_xmin, v_ymin, v_xmax, v_ymax)
+            
+            if clipped_pts:
+                cor_radar = RED if is_ship else YELLOW
+                scanline_fill(self.screen, clipped_pts, cor_radar)
+
+        # Desenhar Nave e Asteroides no radar
+        render_on_radar(self.ship, is_ship=True)
+        for a in self.asteroids:
+            render_on_radar(a)
+        # ==============================================================
+
+        # UI e Textos
         font = pygame.font.Font(None, 36)
         txt = f"Score: {self.game_manager.score} | Wave: {self.game_manager.wave} | Lives: {self.game_manager.lives}"
         self.screen.blit(font.render(txt, True, WHITE), (10, 10))
-        if self.state == "GAME_OVER": self.screen.blit(font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2))
-        elif self.state == "PAUSED": self.screen.blit(font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2))
+        
+        if self.state == "GAME_OVER": 
+            self.screen.blit(font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2))
+        elif self.state == "PAUSED": 
+            self.screen.blit(font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2))
+            
         pygame.display.flip()
 
     def run(self):

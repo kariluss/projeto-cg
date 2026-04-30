@@ -146,3 +146,127 @@ def scanline_fill(superficie: pygame.Surface, pontos: list, cor_preenchimento: t
 
                 for x in range(x_inicio, x_fim + 1):
                     setPixel(superficie, x, y, cor_preenchimento)
+                    
+def sutherland_hodgman_clip(poligono, xmin, ymin, xmax, ymax):
+    """
+    Recorta um polígono convexo contra um retângulo (Viewport) usando Sutherland-Hodgman.
+    poligono: lista de tuplas (x, y)
+    Retorna a nova lista de vértices recortados.
+    """
+    def clip_edge(pontos, borda):
+        novos_pontos = []
+        if not pontos: return novos_pontos
+        
+        for i in range(len(pontos)):
+            p_atual = pontos[i]
+            p_anterior = pontos[i - 1]
+            
+            # Funções para checar se o ponto está dentro e calcular interseção
+            if borda == 'esquerda':
+                dentro_atual = p_atual[0] >= xmin
+                dentro_anterior = p_anterior[0] >= xmin
+                intersec = lambda p1, p2: (xmin, p1[1] + (p2[1] - p1[1]) * (xmin - p1[0]) / (p2[0] - p1[0]) if p2[0] != p1[0] else p1[1])
+            elif borda == 'direita':
+                dentro_atual = p_atual[0] <= xmax
+                dentro_anterior = p_anterior[0] <= xmax
+                intersec = lambda p1, p2: (xmax, p1[1] + (p2[1] - p1[1]) * (xmax - p1[0]) / (p2[0] - p1[0]) if p2[0] != p1[0] else p1[1])
+            elif borda == 'topo':
+                dentro_atual = p_atual[1] >= ymin
+                dentro_anterior = p_anterior[1] >= ymin
+                intersec = lambda p1, p2: (p1[0] + (p2[0] - p1[0]) * (ymin - p1[1]) / (p2[1] - p1[1]) if p2[1] != p1[1] else p1[0], ymin)
+            elif borda == 'fundo':
+                dentro_atual = p_atual[1] <= ymax
+                dentro_anterior = p_anterior[1] <= ymax
+                intersec = lambda p1, p2: (p1[0] + (p2[0] - p1[0]) * (ymax - p1[1]) / (p2[1] - p1[1]) if p2[1] != p1[1] else p1[0], ymax)
+
+            # Lógica principal de inserção de vértices
+            if dentro_atual:
+                if not dentro_anterior:
+                    novos_pontos.append(intersec(p_anterior, p_atual))
+                novos_pontos.append(p_atual)
+            elif dentro_anterior:
+                novos_pontos.append(intersec(p_anterior, p_atual))
+                
+        return novos_pontos
+
+    # Passar o polígono pelas 4 bordas do retângulo clippador
+    p = poligono
+    for borda in ['esquerda', 'direita', 'topo', 'fundo']:
+        p = clip_edge(p, borda)
+        
+    return [(int(round(x)), int(round(y))) for x, y in p]
+
+def desenhar_poligono_bordas(superficie, pontos, cor):
+    """ Desenha apenas as bordas do polígono (Wireframe) """
+    if not pontos or len(pontos) < 3: return
+    n = len(pontos)
+    for i in range(n):
+        x0, y0 = pontos[i]
+        x1, y1 = pontos[(i + 1) % n]
+        bresenham(superficie, int(x0), int(y0), int(x1), int(y1), cor)
+
+def scanline_texture(superficie: pygame.Surface, pontos: list, uvs: list, textura: pygame.Surface):
+    """Preenche um polígono com uma imagem usando interpolação bilinear de UVs."""
+    if not pontos or len(pontos) < 3:
+        return
+        
+    tex_w, tex_h = textura.get_width(), textura.get_height()
+    ys = [p[1] for p in pontos]
+    y_min, y_max = int(min(ys)), int(max(ys))
+    n = len(pontos)
+
+    for y in range(y_min, y_max):
+        # Proteção para não desenhar fora da tela verticalmente
+        if y < 0 or y >= superficie.get_height():
+            continue
+
+        inter = []
+        for i in range(n):
+            x0, y0 = pontos[i]
+            x1, y1 = pontos[(i + 1) % n]
+            u0, v0 = uvs[i]
+            u1, v1 = uvs[(i + 1) % n]
+
+            if y0 == y1:
+                continue
+
+            if y0 > y1:
+                x0, y0, x1, y1 = x1, y1, x0, y0
+                u0, v0, u1, v1 = u1, v1, u0, v0
+
+            if y < y0 or y >= y1:
+                continue
+
+            t = (y - y0) / (y1 - y0)
+            x = x0 + t * (x1 - x0)
+            u = u0 + t * (u1 - u0)
+            v = v0 + t * (v1 - v0)
+            inter.append((x, u, v))
+
+        inter.sort(key=lambda i: i[0])
+
+        for i in range(0, len(inter), 2):
+            if i + 1 >= len(inter):
+                continue
+
+            x_start, u_start, v_start = inter[i]
+            x_end, u_end, v_end = inter[i + 1]
+
+            if x_start == x_end:
+                continue
+
+            for x in range(int(x_start), int(x_end) + 1):
+                # Proteção para não desenhar fora da tela horizontalmente
+                if x < 0 or x >= superficie.get_width():
+                    continue
+
+                t = (x - x_start) / (x_end - x_start)
+                u = u_start + t * (u_end - u_start)
+                v = v_start + t * (v_end - v_start)
+
+                tx = int(u * (tex_w - 1))
+                ty = int(v * (tex_h - 1))
+
+                if 0 <= tx < tex_w and 0 <= ty < tex_h:
+                    cor = textura.get_at((tx, ty))
+                    setPixel(superficie, x, y, cor)

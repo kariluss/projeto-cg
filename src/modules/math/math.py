@@ -119,3 +119,26 @@ def get_reflection_matrix(axis):
         return Matrix(3, 3, [[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     else:
         raise ValueError('Invalid axis')
+
+def get_window_to_viewport_matrix(w_xmin, w_ymin, w_xmax, w_ymax, v_xmin, v_ymin, v_xmax, v_ymax):
+    """
+    Cria a matriz de transformação de uma Janela (Mundo) para uma Viewport (Tela).
+    """
+    # 1. Calcula a escala
+    sx = (v_xmax - v_xmin) / (w_xmax - w_xmin)
+    sy = (v_ymax - v_ymin) / (w_ymax - w_ymin)
+    
+    # Em CG clássica, o Y do mundo cresce para cima e o da tela para baixo.
+    # Como no Pygame ambos crescem para baixo, NÃO vamos inverter o sinal de sy aqui.
+    
+    # 2. Matriz de translação da Janela para a Origem
+    m_trans_origem = get_translation_matrix(-w_xmin, -w_ymin)
+    
+    # 3. Matriz de Escala
+    m_escala = get_scale_matrix(sx, sy)
+    
+    # 4. Matriz de translação para a posição da Viewport
+    m_trans_viewport = get_translation_matrix(v_xmin, v_ymin)
+    
+    # A ordem de multiplicação é da direita para a esquerda: M = Tv * S * To
+    return m_trans_viewport @ m_escala @ m_trans_origem

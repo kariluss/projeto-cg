@@ -9,18 +9,30 @@ class Asteroid(Entity):
     SIZE_SMALL = 0
     
     SIZE_CONFIG = {
-        SIZE_LARGE: {"radius": 25, "points": 20, "speed_factor": 1.0},
-        SIZE_MEDIUM: {"radius": 12, "points": 50, "speed_factor": 1.5},
-        SIZE_SMALL: {"radius": 6, "points": 100, "speed_factor": 2.0},
+        SIZE_LARGE: {"radius": 30, "points": 20, "speed_factor": 1.0},
+        SIZE_MEDIUM: {"radius": 20, "points": 50, "speed_factor": 1.5},
+        SIZE_SMALL: {"radius": 10, "points": 100, "speed_factor": 2.0},
     }
     
     def __init__(self, position, size=SIZE_LARGE, velocity=None):
-        super().__init__(Matrix(3, 6, [
+        # Matriz base do modelo (-1 a 1)
+        model_data = [
             [1.0, 0.5, -0.5, -1.0, -0.5,  0.5],
             [0.0, 0.86, 0.86,  0.0, -0.86, -0.86],
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        ]))
+        ]
+        super().__init__(Matrix(3, 6, model_data))
         
+        # Mapeamento UV Automático baseado nos vértices do modelo!
+        # Como o modelo vai de -1 a 1, normalizamos para 0 a 1 para pegar a textura.
+        self.uvs = []
+        for col in range(6):
+            x = model_data[0][col]
+            y = model_data[1][col]
+            u = (x + 1.0) / 2.0
+            v = (y + 1.0) / 2.0
+            self.uvs.append((u, v))
+            
         self.position = position.copy()
         self.size = size
         self.color = (255, 255, 255)
