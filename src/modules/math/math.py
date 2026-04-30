@@ -1,0 +1,181 @@
+from math import cos, sin
+
+class Matrix:
+    """Matrix class
+    
+    Attributes:
+        rows (int): number of rows
+        cols (int): number of columns
+        data (list): matrix data
+
+    Methods:
+        __matmul__(self, other): matrix multiplication
+        T: transpose matrix
+    """
+    def __init__(self, rows, cols, data=None):
+        self.rows = rows
+        self.cols = cols
+        self.data = data or [[0 for _ in range(cols)] for _ in range(rows)]
+
+    def __matmul__(self, other):
+        """matrix multiplication. About this overload, see: https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
+        Args:
+            other (Matrix): other matrix, must have the same number of rows as the number of columns of self
+        Returns:
+            Matrix: result matrix
+        """
+        if self.cols != other.rows:
+            raise ValueError(f'Number of columns of self ({self.cols}) must be equal to the number of rows of other ({other.rows})')
+        
+        result = Matrix(self.rows, other.cols)
+
+        for i in range(self.rows):
+            for j in range(other.cols):
+                for k in range(self.cols):
+                    result.data[i][j] += self.data[i][k] * other.data[k][j]
+        return result
+    
+    @property
+    def T(self):
+        """transpose matrix
+        Returns:
+            Matrix: transpose matrix
+        """
+        t = [list(t) for t in list(zip(*self.data))]
+        return Matrix(len(t), len(t[0]), t)
+
+# escala = Matrix(3, 3, [[2,0,0],[0,2,0],[0,0,1]])
+# pontos  = Matrix(3, 6, [[1,2,1],[4,5,1],[7,8,1],[3,3,1],[1,1,1],[2,8,1]])
+# escalado = escala @ pontos.T -> precisa transpor para ser posto no modelo colunar onde os vetores estão nas colunas "em pé"
+# escalado.T.data
+
+def get_identity_matrix(n=3):
+    """identity matrix
+    Args:
+        n (int): size of the matrix
+    Returns:
+        Matrix: identity matrix
+    """
+    return Matrix(n, n, [[1 if i == j else 0 for j in range(n)] for i in range(n)])
+
+def get_translation_matrix(tx, ty):
+    """translation matrix
+    Args:
+        tx (float): translation in x
+        ty (float): translation in y
+    Returns:
+        Matrix: translation matrix
+    """
+    return Matrix(3, 3, [[1, 0, tx], [0, 1, ty], [0, 0, 1]])
+
+def get_rotation_matrix(angle):
+    """rotation matrix
+
+    Args:
+        angle (float): angle in radians
+
+    Returns:
+        Matrix: rotation matrix
+    """
+    return Matrix(3, 3, [[cos(angle), -sin(angle), 0], [sin(angle), cos(angle), 0], [0, 0, 1]])
+
+def get_scale_matrix(sx, sy):
+    """scale matrix
+
+    Args:
+        sx (float): scale factor in x
+        sy (float): scale factor in y
+
+    Returns:
+        Matrix: scale matrix
+    """
+    return Matrix(3, 3, [[sx, 0, 0], [0, sy, 0], [0, 0, 1]])
+
+def get_shear_matrix(sx, sy):
+    """shear matrix
+
+    Args:
+        sx (float): shear factor in x
+        sy (float): shear factor in y
+
+    Returns:
+        Matrix: shear matrix
+    """
+    return Matrix(3, 3, [[1, sx, 0], [sy, 1, 0], [0, 0, 1]])
+
+def get_reflection_matrix(axis):
+    """reflection matrix
+    Args:
+        axis (str): axis of reflection
+
+    Returns:
+        Matrix: reflection matrix
+    """
+    if axis == 'x':
+        return Matrix(3, 3, [[1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    elif axis == 'y':
+        return Matrix(3, 3, [[-1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    elif axis == 'origin':
+        return Matrix(3, 3, [[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    else:
+        raise ValueError('Invalid axis')
+
+def get_window_to_viewport_matrix(w_xmin, w_ymin, w_xmax, w_ymax, v_xmin, v_ymin, v_xmax, v_ymax):
+    """
+    Cria a matriz de transformação de uma Janela (Mundo) para uma Viewport (Tela).
+    """
+    # 1. Calcula a escala
+    sx = (v_xmax - v_xmin) / (w_xmax - w_xmin)
+    sy = (v_ymax - v_ymin) / (w_ymax - w_ymin)
+    
+    # Em CG clássica, o Y do mundo cresce para cima e o da tela para baixo.
+    # Como no Pygame ambos crescem para baixo, NÃO vamos inverter o sinal de sy aqui.
+    
+    # 2. Matriz de translação da Janela para a Origem
+    m_trans_origem = get_translation_matrix(-w_xmin, -w_ymin)
+    
+    # 3. Matriz de Escala
+    m_escala = get_scale_matrix(sx, sy)
+    
+    # 4. Matriz de translação para a posição da Viewport
+    m_trans_viewport = get_translation_matrix(v_xmin, v_ymin)
+    
+    return m_trans_viewport @ m_escala @ m_trans_origem
+
+# Vector Utilities
+
+import math as python_math
+
+def distance(p1, p2):
+    """Calculate Euclidean distance between two points [x, y]"""
+    return python_math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def magnitude(v):
+    """Calculate magnitude of a 2D vector [x, y]"""
+    return python_math.sqrt(v[0]**2 + v[1]**2)
+
+def normalize(v):
+    """Normalize a 2D vector [x, y]"""
+    mag = magnitude(v)
+    if mag == 0:
+        return [0.0, 0.0]
+    return [v[0] / mag, v[1] / mag]
+
+def from_angle(angle, length=1.0):
+    """Create a 2D vector [x, y] from an angle (in radians) and length"""
+    return [length * python_math.sin(angle), length * -python_math.cos(angle)] # Inverted y for Pygame coordinates standard used in engine
+
+import random
+
+def vector_from_points(p1, p2, speed=1.0):
+    """Returns a velocity vector pointing from p1 to p2 with given speed"""
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    mag = magnitude([dx, dy])
+    if mag == 0: return [0.0, 0.0]
+    return [(dx / mag) * speed, (dy / mag) * speed]
+
+def random_direction(speed=1.0):
+    """Returns a random 2D velocity vector [vx, vy]"""
+    angle = random.uniform(0, 2 * python_math.pi)
+    return [speed * python_math.cos(angle), speed * python_math.sin(angle)]
