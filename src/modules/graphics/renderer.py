@@ -2,7 +2,7 @@ import pygame
 import math
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, RED, YELLOW, BLACK
 from src.modules.graphics.main import bresenham, scanline_fill, setPixel, sutherland_hodgman_clip, scanline_texture
-from src.modules.math.math import Matrix, get_translation_matrix, get_rotation_matrix, get_scale_matrix, get_window_to_viewport_matrix
+from src.modules.math.math import get_translation_matrix, get_rotation_matrix, get_scale_matrix, get_window_to_viewport_matrix
 
 class Renderer:
     def __init__(self, screen):
@@ -25,6 +25,20 @@ class Renderer:
             self.v_xmin, self.v_ymin, self.v_xmax, self.v_ymax
         )
         
+        # Pré-extrai os coeficientes escalares da matrix_radar (constante após __init__).
+        # Como é uma transformação pura de escala+translação (sem rotação), a matriz tem a forma:
+        # [[sx, 0, tx], [0, sy, ty], [0, 0, 1]]
+        # Isso permite aplicar a transformação por ponto com sx*x+tx sem criar objetos Matrix.
+        rd = self.matrix_radar.data
+        self._radar_sx = rd[0][0]
+        self._radar_sy = rd[1][1]
+        self._radar_tx = rd[0][2]
+        self._radar_ty = rd[1][2]
+        
+        # Cache de world points calculados em draw_world_entities, reutilizados em draw_radar.
+        # Evita recalcular a pipeline T@R@S@vertices duas vezes por entidade por frame.
+        self._world_pts_cache = {}
+        
     def _get_polygon_points(self, entity):
         """Aplica a pipeline de transformação (Escala -> Rotação -> Translação) no objeto e retorna vértices no mundo."""
         transform_matrix = (
@@ -43,15 +57,21 @@ class Renderer:
     def draw_world_entities(self, ship, asteroids, bullets, textures_map):
         self.screen.fill(BLACK)
         
+        # Limpa o cache e reconstrói os world points para este frame.
+        # Cada entidade é transformada UMA vez aqui; o radar lê deste cache.
+        self._world_pts_cache = {}
+        
         # 1. Pipeline para a Nave Principal (com Clipping Ativo)
         ship_pts = self._get_polygon_points(ship)
+        self._world_pts_cache['ship'] = ship_pts
         clipped_ship = sutherland_hodgman_clip(ship_pts, self.w_xmin, self.w_ymin, self.w_xmax, self.w_ymax)
         if clipped_ship:
             scanline_fill(self.screen, clipped_ship, ship.color)
             
         # 2. Pipeline para os Asteroides
-        for a in asteroids:
+        for i, a in enumerate(asteroids):
             ast_pts = self._get_polygon_points(a)
+            self._world_pts_cache[i] = ast_pts
             # Para textura, já validamos X e Y dentro do `scanline_texture`.
             # Não aplicamos Sutherland-Hodgman aqui pq ele alteraria o array de pontos e 
             # não temos um algoritmo para interpolar os atributos UV para os novos vértices criados na borda do clipping.
@@ -85,18 +105,28 @@ class Renderer:
         # Caixa do radar
         pygame.draw.rect(self.screen, WHITE, (self.v_xmin, self.v_ymin, self.VP_WIDTH, self.VP_HEIGHT), 1)
 
-        self._render_on_radar(ship, is_ship=True)
-        for a in asteroids:
-            self._render_on_radar(a)
-            
-    def _render_on_radar(self, entity, is_ship=False):
-        world_pts = self._get_polygon_points(entity)
+        # Reutiliza os world points já calculados em draw_world_entities.
+        # O radar é um espelho: pega o estado do mundo e projeta no viewport do minimapa.
+        ship_pts = self._world_pts_cache.get('ship')
+        if ship_pts is None:
+            ship_pts = self._get_polygon_points(ship)
+        self._render_on_radar(ship_pts, is_ship=True)
         
-        radar_pts = []
-        for x, y in world_pts:
-            vec = Matrix(3, 1, [[x], [y], [1]])
-            vec_transformed = self.matrix_radar @ vec
-            radar_pts.append((vec_transformed.data[0][0], vec_transformed.data[1][0]))
+        for i, a in enumerate(asteroids):
+            ast_pts = self._world_pts_cache.get(i)
+            if ast_pts is None:
+                ast_pts = self._get_polygon_points(a)
+            self._render_on_radar(ast_pts)
+            
+    def _render_on_radar(self, world_pts, is_ship=False):
+        # Aplica a transformação Mundo -> Radar inline, sem criar objetos Matrix por vértice.
+        # matrix_radar é escala+translação pura: [[sx,0,tx],[0,sy,ty],[0,0,1]]
+        # Logo: x' = sx*x + tx  |  y' = sy*y + ty
+        sx = self._radar_sx
+        sy = self._radar_sy
+        tx = self._radar_tx
+        ty = self._radar_ty
+        radar_pts = [(sx * x + tx, sy * y + ty) for x, y in world_pts]
 
         clipped_pts = sutherland_hodgman_clip(radar_pts, self.v_xmin, self.v_ymin, self.v_xmax, self.v_ymax)
         

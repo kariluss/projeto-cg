@@ -1,5 +1,5 @@
 import math
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, ASTEROID_ROTATION
 from src.modules.math.math import magnitude, from_angle
 
 class PhysicsSystem:
@@ -7,6 +7,9 @@ class PhysicsSystem:
     def update_entity(entity):
         entity.position[0] += entity.velocity[0]
         entity.position[1] += entity.velocity[1]
+        
+        if ASTEROID_ROTATION and hasattr(entity, 'rotation_speed'):
+            entity.rotation += entity.rotation_speed
         
         if hasattr(entity, 'friction'):
             entity.velocity[0] *= entity.friction

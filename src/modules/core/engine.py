@@ -50,6 +50,7 @@ class GameEngine:
             '20p': self.moon_texture_20p,
             '10p': self.moon_texture_10p
         }
+        self.font = pygame.font.Font(None, 36)
 
     def _process_events(self):
         for event in pygame.event.get():
@@ -118,14 +119,13 @@ class GameEngine:
         self.renderer.draw_radar(self.ship, self.asteroids)
 
         # UI e Textos
-        font = pygame.font.Font(None, 36)
         txt = f"Score: {self.game_manager.score} | Lives: {self.game_manager.lives}"
-        self.screen.blit(font.render(txt, True, WHITE), (10, 10))
+        self.screen.blit(self.font.render(txt, True, WHITE), (10, 10))
         
         if self.state == "GAME_OVER": 
-            self.screen.blit(font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2))
+            self.screen.blit(self.font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2))
         elif self.state == "PAUSED": 
-            self.screen.blit(font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2))
+            self.screen.blit(self.font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2))
             
         pygame.display.flip()
 

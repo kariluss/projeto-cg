@@ -1,5 +1,3 @@
-from src.modules.math.math import distance
-
 class CollisionSystem:
     """Sistema de colisão círculo-círculo usando Matemática do sistema"""
     
@@ -7,6 +5,7 @@ class CollisionSystem:
     def check_collision(center1, radius1, center2, radius2):
         """
         Verifica se dois círculos colidem.
+        Usa distância ao quadrado para evitar o custo de sqrt.
         
         Args:
             center1: [x, y] - centro do primeiro círculo
@@ -17,7 +16,10 @@ class CollisionSystem:
         Returns:
             bool - True se há colisão, False caso contrário
         """
-        return distance(center1, center2) < (radius1 + radius2)
+        dx = center2[0] - center1[0]
+        dy = center2[1] - center1[1]
+        r_sum = radius1 + radius2
+        return (dx * dx + dy * dy) < (r_sum * r_sum)
     
     @staticmethod
     def check_bullet_asteroid_collisions(bullets, asteroids):
