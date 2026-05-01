@@ -1,7 +1,5 @@
 import pygame
 import sys
-import math
-import random
 from src.config import *
 from src.modules.entities.Ship import Ship
 from src.modules.entities.Asteroid import Asteroid
