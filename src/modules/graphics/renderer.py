@@ -147,48 +147,109 @@ class Renderer:
             cor_radar = RED if is_ship else YELLOW
             scanline_fill(self.screen, clipped_pts, cor_radar)
 
-    def draw_start_menu(self, font):
-        """Desenha a composição visual do Menu Inicial para demonstrar os algoritmos."""
-        # 1. Fundo com Gradiente (Scanline Gradient)
-        # Polígono cobrindo a tela toda
+    def draw_start_menu(self, font, frame_count):
+        """Desenha o Menu Inicial Animado com vários elementos dinâmicos."""
+        # 1. Fundo com Gradiente (Scanline Gradient) - Animado
         bg_points = [(0, 0), (SCREEN_WIDTH, 0), (SCREEN_WIDTH, SCREEN_HEIGHT), (0, SCREEN_HEIGHT)]
-        bg_colors = [(0, 0, 50), (0, 0, 50), (0, 0, 0), (0, 0, 0)] # Azul escuro para preto
+        
+        # Cores que variam com o tempo para efeito de pulsação
+        intensity = abs(math.sin(frame_count * 0.02)) * 30
+        bg_colors = [
+            (int(intensity), 0, 50 + int(intensity)), 
+            (int(intensity), 0, 50 + int(intensity)), 
+            (0, 0, int(20 + intensity)), 
+            (0, 0, int(20 + intensity))
+        ]
         scanline_gradient_fill(self.screen, bg_points, bg_colors)
 
-        # 2. Planeta (Circle + Flood Fill)
-        planet_xc, planet_yc, planet_r = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100
-        midpoint_circle(self.screen, planet_xc, planet_yc, planet_r, (0, 200, 0)) # Borda verde
-        # Preenchimento com Flood Fill (partindo do centro)
-        flood_fill(self.screen, planet_xc, planet_yc, (0, 0, 0, 255), (0, 100, 0)) # Preenche com verde escuro
-        # Observação: usei (0,0,0,255) pq o fundo original era preto. 
-        # Como o gradiente foi desenhado, a cor exata no centro pode variar se não for sólido.
-        # Mas o centro do planeta (SCREEN_WIDTH//2, SCREEN_HEIGHT//2) deve ser escuro o suficiente.
+        # 2. Planeta com rotação e pulsação de escala
+        planet_xc, planet_yc = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        planet_base_r = 100
+        planet_r = planet_base_r + int(10 * math.sin(frame_count * 0.03))
+        
+        midpoint_circle(self.screen, planet_xc, planet_yc, planet_r, (0, 200, 0))
+        flood_fill(self.screen, planet_xc, planet_yc, (0, 0, 0, 255), (0, 100, 0))
 
-        # 3. Anéis planetários (Ellipse)
+        # 3. Anéis planetários com rotação
+        rotation_angle = (frame_count * 2) % 360
+        
+        # Anéis ellipse estáticos (base)
         midpoint_ellipse(self.screen, planet_xc, planet_yc, 180, 40, (200, 200, 100))
         midpoint_ellipse(self.screen, planet_xc, planet_yc, 200, 50, (150, 150, 50))
+        
+        # Anéis dinâmicos que pulsam
+        ring_scale = 220 + int(30 * math.sin(frame_count * 0.04))
+        midpoint_ellipse(self.screen, planet_xc, planet_yc, ring_scale, 30, 
+                        (int(100 + 100 * math.sin(frame_count * 0.05)), 150, 200))
 
-        # 4. Lasers de Fundo com Cohen-Sutherland
-        # Janela de clipping no centro
+        # 4. Asteroides orbitando ao redor do planeta (NOVO)
+        num_asteroids = 5
+        orbit_radius = 250
+        for i in range(num_asteroids):
+            angle = (frame_count * 1.5 + (360 / num_asteroids) * i) * (math.pi / 180)
+            ast_x = planet_xc + orbit_radius * math.cos(angle)
+            ast_y = planet_yc + orbit_radius * math.sin(angle)
+            
+            ast_size = 15 + int(5 * math.sin(frame_count * 1.5 + i))
+            midpoint_circle(self.screen, int(ast_x), int(ast_y), ast_size, (200, 100, 100))
+            
+            # Pequeno preenchimento para o asteroide
+            try:
+                flood_fill(self.screen, int(ast_x), int(ast_y), (0, 0, 0, 255), (150, 50, 50))
+            except:
+                pass  # Evita erros se clicar fora da tela
+
+        # 5. Lasers de Fundo com Cohen-Sutherland (ANIMADO)
         clip_margin = 150
         xmin, ymin = SCREEN_WIDTH // 2 - clip_margin, SCREEN_HEIGHT // 2 - clip_margin
         xmax, ymax = SCREEN_WIDTH // 2 + clip_margin, SCREEN_HEIGHT // 2 + clip_margin
         
-        # Desenha borda da janela de clipping (opcional, para visualização)
         pygame.draw.rect(self.screen, WHITE, (xmin, ymin, xmax-xmin, ymax-ymin), 1)
 
-        for x0, y0, x1, y1, color in self._lasers:
-            clipped = cohen_sutherland_clip(x0, y0, x1, y1, xmin, ymin, xmax, ymax)
+        for idx, (x0, y0, x1, y1, color) in enumerate(self._lasers):
+            # Lasers se movem suavemente
+            offset = int(20 * math.sin(frame_count * 0.05 + idx * 0.3))
+            x0_anim = x0 + offset
+            x1_anim = x1 + offset
+            
+            clipped = cohen_sutherland_clip(x0_anim, y0, x1_anim, y1, xmin, ymin, xmax, ymax)
             if clipped:
                 cx0, cy0, cx1, cy1 = clipped
-                bresenham(self.screen, int(cx0), int(cy0), int(cx1), int(cy1), color)
+                # Cor pulsante
+                r = int(color[0] + 50 * math.sin(frame_count * 0.06 + idx * 0.2))
+                g = int(color[1] + 50 * math.sin(frame_count * 0.06 + idx * 0.3))
+                b = int(color[2] + 50 * math.sin(frame_count * 0.06 + idx * 0.4))
+                r, g, b = max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))
+                bresenham(self.screen, int(cx0), int(cy0), int(cx1), int(cy1), (r, g, b))
 
-        # 5. UI Text
+        # 6. Efeito de Stars de Fundo (NOVO)
+        import random
+        random.seed(42)  # Seed fixo para consistência
+        for _ in range(30):
+            star_x = random.randint(0, SCREEN_WIDTH)
+            star_y = random.randint(0, SCREEN_HEIGHT)
+            star_brightness = int(200 + 55 * math.sin(frame_count * 0.02 + star_x * 0.01))
+            star_brightness = max(0, min(255, star_brightness))
+            setPixel(self.screen, star_x, star_y, (star_brightness, star_brightness, star_brightness))
+
+        # 7. UI Text com animações
         title_text = font.render("ASTEROIDS CG", True, WHITE)
-        self.screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+        title_y = 50 + int(5 * math.sin(frame_count * 0.04))  # Pulsação vertical
+        self.screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, title_y))
         
-        start_text = font.render("Press ENTER to Start", True, YELLOW)
-        self.screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT - 100))
+        # Texto de início com piscada
+        alpha_start = int(255 * (0.5 + 0.5 * math.sin(frame_count * 0.05)))
+        if alpha_start > 100:  # Só desenha quando brilhante o suficiente
+            start_text = font.render("Press ENTER to Start", True, YELLOW)
+            self.screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT - 100))
         
+        # Texto de sair fixo
         quit_text = font.render("Press ESC to Quit", True, RED)
         self.screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, SCREEN_HEIGHT - 60))
+
+        # 8. Indicador de "ready" com animação de escala
+        scale = 1.0 + 0.2 * math.sin(frame_count * 0.06)
+        ready_size = int(24 * scale)
+        ready_font = pygame.font.Font(None, ready_size)
+        ready_text = ready_font.render("●", True, (0, 255, 0))
+        self.screen.blit(ready_text, (SCREEN_WIDTH // 2 - ready_text.get_width() // 2, SCREEN_HEIGHT // 2 + 150))

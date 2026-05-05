@@ -9,34 +9,9 @@ Criar um jogo de arcade 2D baseado no clássico Asteroids (1979). O jogador deve
 - O jogador controla uma nave.
 - Asteroides vagam pelo espaço em direções e velocidades aleatórias e constantes.
 - O jogador atira projéteis para destruir os asteroides.
-- Ao ser atingido, o asteroide se divide em dois pedaços menores.
-- O número de asteroides e sua velocidade aumentam com o tempo.
+- Ao ser atingido, o asteroide se divide em dois pedaços menores. Um pedaço viaja lentamente em direção ao Jogador (Homing), enquanto o outro segue uma trajetória aleatória para evitar previsibilidade.
+- O número de asteroides e sua velocidade aumentam com o tempo, porém existe um limite técnico de asteroides pequenos simultâneos para garantir a performance da rasterização.
 - O jogo termina quando o jogador perde todas as suas vidas.
-- **Colisões:** O sistema de colisão deve ser preciso para garantir uma experiência de jogo justa.
-- **Menu e Estados:** O jogo deve possuir um menu inicial demonstrando primitivas gráficas e permitir reiniciar após o Game Over.
-
----
-
-## 2. Interface e Menus
-
-### 2.1 Menu Inicial (START_MENU)
-O jogo inicia em uma tela de demonstração técnica que comprova a implementação dos algoritmos de rasterização.
-*   **Elementos Visuais:**
-    *   **Fundo:** Preenchimento com gradiente suave (Azul Escuro para Preto).
-    *   **Planeta Central:** Desenvolvido com algoritmo de Ponto Médio e preenchido com Flood Fill.
-    *   **Anéis:** Elipses de ponto médio ao redor do planeta.
-    *   **Lasers de Fundo:** Linhas geradas aleatoriamente e recortadas por uma janela retangular central usando o algoritmo de Cohen-Sutherland.
-*   **Interações:**
-    *   `ENTER`: Inicia o jogo (transição para `RUNNING`).
-    *   `ESC`: Sai da aplicação.
-
-### 2.2 Game Over (GAME_OVER)
-Exibido quando as vidas chegam a zero.
-*   **Interações:**
-    *   `SPACE`: Reinicia o jogo completamente (reseta score, vidas e entidades).
-    *   `ESC`: Sai da aplicação.
-
----
 
 ## 3. Game Entities
 
@@ -66,4 +41,3 @@ Exibido quando as vidas chegam a zero.
 
 - O jogador inicia com 7 vidas.
 - Pontuação é ganha ao destruir asteroides.
-- **Escalabilidade e Dificuldade:** O jogo deve aumentar o número de asteroides à medida que o jogador progride.

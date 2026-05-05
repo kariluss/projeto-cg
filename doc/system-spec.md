@@ -6,47 +6,37 @@ O sistema é um motor gráfico 2D minimalista construído sobre o `Pygame`. Ele 
 
 ## 2. Architecture Layers (Strict Layering)
 
-- **Core:** Gerencia o _Game Loop_, o estado global (START_MENU, RUNNING, PAUSED, GAME_OVER) e orquestra a comunicação entre os sistemas.
-- **Math:** O núcleo matemático do projeto. Provê abstrações de Álgebra Linear (Vetores e Matrizes).
-- **Physics System:** Sistema que processa a movimentação, inércia e colisões.
-- **Graphics System:** Módulo de renderização bruta, implementando algoritmos clássicos de computação gráfica sem o uso de funções `draw` nativas (exceto bordas de UI).
-- **Game:** Gerenciamento de regras de alto nível (pontuação, ondas).
-- **Entities:** Recipientes puros de dados (Nave, Asteroides, Tiros).
+- `Core`: Gerencia o _Game Loop_, o estado global (pausado, rodando, game over) e orquestra a comunicação entre os sistemas.
+- `Math`: O núcleo matemático do projeto. Provê abstrações de Álgebra Linear. **Nenhuma outra camada deve implementar cálculos matriciais próprios.**
+- `Physics System`: Sistema que processa a movimentação, inércia e colisões. As entidades **não** processam sua própria física.
+- `Graphics System`: Módulo de renderização bruta (`Bresenham`, `Scan-line`) e a Pipeline de Transformação. As entidades **não** possuem métodos de desenho.
+- `Game`: Gerenciamento de regras de alto nível (pontuação, ondas).
+- `Entities`: Recipientes puros de dados (Data Models). Contêm apenas estado (posição, velocidade, vértices locais, etc). **Proibido importar Pygame ou Graphics nestas classes.**
 
-## 3. Graphics Module Detail
-
-Este módulo é o coração visual do projeto. Toda a rasterização é feita "na mão" usando `setPixel`.
-
-*   **Algoritmos Implementados:**
-    *   **Bresenham:** Desenho de linhas.
-    *   **DDA:** Alternativa para desenho de linhas.
-    *   **Ponto Médio para Círculo:** Gerador de circunferências com simetria de 8 vias.
-    *   **Ponto Médio para Elipse:** Gerador de elipses com simetria de 4 vias e divisão em duas regiões.
-    *   **Scanline Fill:** Preenchimento de polígonos.
-    *   **Scanline Gradient Fill:** Preenchimento com interpolação de cores entre vértices.
-    *   **Flood Fill:** Algoritmo de preenchimento por inundação (iterativo via pilha).
-    *   **Cohen-Sutherland:** Recorte de linhas contra janela retangular.
-    *   **Sutherland-Hodgman:** Recorte de polígonos contra viewport.
-    *   **Scanline Texture:** Rasterização de imagens (texturas) sobre polígonos com interpolação UV.
-
-## 4. Technical Constraints
+## 3. Technical Constraints
 
 - A renderização deve ser feita frame a frame, limpando e redesenhando a tela.
 - **Matemática:** O módulo `Math` é a base para todos os cálculos do sistema (vetoriais e matriciais).
-- **Performance:** Devido ao custo computacional da rasterização via Scan-line em Python, o sistema limita o número máximo de asteroides pequenos simultâneos (`MAX_SMALL_ASTEROIDS`).
+- **Performance:** Devido ao custo computacional da rasterização via Scan-line em Python, o sistema limita o número máximo de asteroides pequenos simultâneos (`MAX_SMALL_ASTEROIDS`) para evitar quedas bruscas de FPS.
 
-## 5. Logic Flow & States
+## 4. Data Model
 
-- **Loop:** `main.py` -> `core.loop` -> `game.update` -> `physics.process` -> `graphics.render`.
-- **Estados:**
-    - `START_MENU`: Tela inicial demonstrando os algoritmos. Prova técnica.
-    - `RUNNING`: Jogo em execução.
-    - `PAUSED`: Jogo pausado.
-    - `GAME_OVER`: Fim de jogo, permite reiniciar com `SPACE`.
+### Vértices
 
-## 6. Rendering Pipeline
+- Representados como `tuple` ou `list` $[x, y, 1]$.
+- **Normalização:** O espaço do modelo **deve** ser normalizado entre $[-1, 1]$ no arquivo da entidade. O tamanho real deve ser definido por uma Matriz de Escala durante a renderização.
+
+## 5. Rendering Pipeline
 
 1. **Modelagem:** Entidade fornece vértices no _Espaço do Modelo_.
 2. **Transformação:** `Math` aplica matrizes para mover vértices ao _Espaço do Mundo_.
-3. **Clipping:** Recorte contra os limites da tela (`Viewport`).
+3. **Clipping:** Algoritmo simples de recorte contra os limites da tela (`Viewport`).
 4. **Rasterização:** `Graphics` converte vetores transformados para pixels no `Frame Buffer`.
+
+## 6. Logic Flow
+
+- `main.py` -> `core.loop` -> `game.update` -> `physics.process` -> `graphics.render` -> `display.flip`.
+
+## 7. Persistence (Config)
+
+- Variáveis globais de controle (FPS, largura, altura) definidas em arquivo `config.py` ou carregadas via `json`.
