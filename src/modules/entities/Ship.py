@@ -21,6 +21,19 @@ class Ship(Entity):
         self.thrust_input = False
         self.shoot_cooldown = 0
         self.shoot_delay = 8
+
+        self.invincible = False
+        self.invincible_time = 0.0
+        self.invincible_duration = 1.5
+        self.blink_frequency = 0.1
+        self.blink_timer = 0.0
+        self.visible = True
+    
+    def enable_invincibility(self):
+        self.invincible = True
+        self.invincible_time = self.invincible_duration
+        self.blink_timer = 0.0
+        self.visible = True
         
     def get_center(self):
         return self.position

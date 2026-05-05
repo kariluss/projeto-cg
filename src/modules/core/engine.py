@@ -8,6 +8,7 @@ from src.modules.physics.CollisionSystem import CollisionSystem
 from src.modules.physics.PhysicsSystem import PhysicsSystem
 from src.modules.game.manager import GameManager
 from src.modules.graphics.renderer import Renderer
+from menu import MenuScreen  # Importa o novo menu
 
 class GameEngine:
     def __init__(self):
@@ -17,10 +18,9 @@ class GameEngine:
         pygame.display.set_caption(TITLE)
         self.clock = pygame.time.Clock()
         self.running = True
-        self.state = "RUNNING"
+        self.state = "MENU"  # Começa no menu, não no jogo
         
         # CARREGANDO A TEXTURA DA LUA
-        # (Certifique-se de ter um arquivo 'moon.jpg' na mesma pasta onde roda o script)
         try:
             self.moon_texture_30p = pygame.image.load("./assets/moon-8bit-30p.png").convert()
             self.moon_texture_20p = pygame.image.load("./assets/moon-8bit-20p.png").convert()
@@ -50,22 +50,42 @@ class GameEngine:
         }
         self.font = pygame.font.Font(None, 36)
 
+    def _show_menu(self):
+        """Mostra o menu inicial e aguarda o jogador começar o jogo"""
+        menu = MenuScreen(self.screen)
+        game_started = menu.run()
+        
+        if game_started:
+            self.state = "RUNNING"
+        else:
+            self.running = False
+
     def _process_events(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: self.running = False
+            if event.type == pygame.QUIT: 
+                self.running = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: self.running = False
-                if event.key == pygame.K_p: self.state = "PAUSED" if self.state == "RUNNING" else "RUNNING"
-                if event.key in (pygame.K_LEFT, pygame.K_a): self.ship.rotation_input = -1
-                elif event.key in (pygame.K_RIGHT, pygame.K_d): self.ship.rotation_input = 1
-                if event.key in (pygame.K_UP, pygame.K_w): self.ship.thrust_input = True
+                if event.key == pygame.K_ESCAPE: 
+                    self.running = False
+                if event.key == pygame.K_p: 
+                    self.state = "PAUSED" if self.state == "RUNNING" else "RUNNING"
+                if event.key in (pygame.K_LEFT, pygame.K_a): 
+                    self.ship.rotation_input = -1
+                elif event.key in (pygame.K_RIGHT, pygame.K_d): 
+                    self.ship.rotation_input = 1
+                if event.key in (pygame.K_UP, pygame.K_w): 
+                    self.ship.thrust_input = True
             if event.type == pygame.KEYUP:
-                if event.key in (pygame.K_LEFT, pygame.K_a) and self.ship.rotation_input == -1: self.ship.rotation_input = 0
-                elif event.key in (pygame.K_RIGHT, pygame.K_d) and self.ship.rotation_input == 1: self.ship.rotation_input = 0
-                if event.key in (pygame.K_UP, pygame.K_w): self.ship.thrust_input = False
+                if event.key in (pygame.K_LEFT, pygame.K_a) and self.ship.rotation_input == -1: 
+                    self.ship.rotation_input = 0
+                elif event.key in (pygame.K_RIGHT, pygame.K_d) and self.ship.rotation_input == 1: 
+                    self.ship.rotation_input = 0
+                if event.key in (pygame.K_UP, pygame.K_w): 
+                    self.ship.thrust_input = False
 
     def _handle_shooting(self):
-        if self.ship.shoot_cooldown > 0: self.ship.shoot_cooldown -= 1
+        if self.ship.shoot_cooldown > 0: 
+            self.ship.shoot_cooldown -= 1
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE] and self.ship.shoot_cooldown <= 0:
             offset = PhysicsSystem.calculate_bullet_velocity(self.ship.rotation, self.ship.radius)
@@ -105,7 +125,8 @@ class GameEngine:
             
             if CollisionSystem.check_ship_asteroid_collisions(self.ship, self.asteroids):
                 self.game_manager.lives -= 1
-                if self.game_manager.lives <= 0: self.state = "GAME_OVER"
+                if self.game_manager.lives <= 0: 
+                    self.state = "GAME_OVER"
                 else:
                     self.ship.position, self.ship.velocity = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2], [0.0, 0.0]
                     self.bullets = []
@@ -128,7 +149,15 @@ class GameEngine:
         pygame.display.flip()
 
     def run(self):
+        # Mostra o menu inicial
+        self._show_menu()
+        
+        # Loop do jogo (se o jogador não fechou a janela no menu)
         while self.running:
-            self._process_events(); self._update(); self._render()
+            self._process_events()
+            self._update()
+            self._render()
             self.clock.tick(FPS)
-        pygame.quit(); sys.exit()
+        
+        pygame.quit()
+        sys.exit()
