@@ -29,8 +29,8 @@ class MenuScreen:
         self.show_start_text = True
         
         # Cores com tema retro-futurista
-        self.title_color = (0, 255, 200)  # Ciano neon
-        self.subtitle_color = (255, 100, 255)  # Magenta neon
+        self.title_color = (255, 255, 255)  # Ciano neon
+        self.subtitle_color = (255, 255, 255)  # Magenta neon
         self.glow_color = (100, 50, 255)  # Roxo para efeito glow
         
     def _initialize_background_asteroids(self):
@@ -68,16 +68,14 @@ class MenuScreen:
         
         self.show_start_text = self.blink_timer < self.blink_interval
     
-    def _draw_glow_text(self, text, font, color, glow_color, x, y):
-        """Desenha texto com efeito glow (brilho)"""
-        # Renderiza o glow (várias camadas semi-transparentes)
-        for offset in range(3, 0, -1):
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(30)
+    def _draw_glow_text(self, text, font, color, x, y):
+        """Desenha texto com efeito glow sutil (apenas brilho nas bordas)"""
+        # Renderiza o glow apenas nas laterais (bem sutil)
+        for offset in range(2, 0, -1):
+            glow_surf = font.render(text, True, color)
+            glow_surf.set_alpha(15)
             self.screen.blit(glow_surf, (x - offset, y))
             self.screen.blit(glow_surf, (x + offset, y))
-            self.screen.blit(glow_surf, (x, y - offset))
-            self.screen.blit(glow_surf, (x, y + offset))
         
         # Renderiza o texto principal
         text_surf = font.render(text, True, color)
@@ -92,20 +90,15 @@ class MenuScreen:
         # Desenha asteroides de fundo com baixa opacidade
         self._render_background_asteroids()
         
-        # Título com glow
-        title_y = SCREEN_HEIGHT // 3
-        self._draw_glow_text("ASTEROIDS", self.title_font, self.title_color, self.glow_color, SCREEN_WIDTH // 2, title_y)
+        # Título com glow sutil
+        title_y = SCREEN_HEIGHT // 2 - 60
+        self._draw_glow_text("ASTEROIDS", self.title_font, self.title_color, SCREEN_WIDTH // 2, title_y)
         
         # Texto "Aperte Enter" com animação de piscada
         if self.show_start_text:
-            subtitle_y = SCREEN_HEIGHT * 2 // 3
+            subtitle_y = SCREEN_HEIGHT // 2 + 60
             subtitle_text = "APERTE ENTER PARA COMEÇAR"
-            subtitle_surf = self.subtitle_font.render(subtitle_text, True, self.subtitle_color)
-            subtitle_rect = subtitle_surf.get_rect(center=(SCREEN_WIDTH // 2, subtitle_y))
-            self.screen.blit(subtitle_surf, subtitle_rect)
-        
-        # Linha decorativa de asteroides
-        self._draw_decorative_line()
+            self._draw_glow_text(subtitle_text, self.subtitle_font, self.subtitle_color, SCREEN_WIDTH // 2, subtitle_y)
         
         pygame.display.flip()
     
@@ -139,17 +132,6 @@ class MenuScreen:
         # Reduz opacidade geral dos asteroides
         temp_surf.set_alpha(50)
         self.screen.blit(temp_surf, (0, 0))
-    
-    def _draw_decorative_line(self):
-        """Desenha uma linha decorativa de pulsação"""
-        pulse = math.sin(self.blink_timer / self.blink_interval * math.pi) * 30
-        line_y = SCREEN_HEIGHT * 0.5 + pulse
-        
-        # Linha horizontal com gradiente
-        for i in range(0, SCREEN_WIDTH, 2):
-            alpha = int(255 * (1 - abs(i - SCREEN_WIDTH // 2) / (SCREEN_WIDTH // 2)))
-            if alpha > 0:
-                pygame.draw.line(self.screen, (0, 255, 200, alpha), (i, int(line_y)), (i + 2, int(line_y)), 2)
     
     def run(self):
         """Loop principal do menu"""
