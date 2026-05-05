@@ -1,7 +1,10 @@
 import pygame
 import math
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, RED, YELLOW, BLACK
-from src.modules.graphics.main import bresenham, scanline_fill, setPixel, sutherland_hodgman_clip, scanline_texture
+from src.modules.graphics.main import (
+    bresenham, scanline_fill, setPixel, sutherland_hodgman_clip, scanline_texture,
+    midpoint_circle, midpoint_ellipse, flood_fill, scanline_gradient_fill, cohen_sutherland_clip
+)
 from src.modules.math.math import get_translation_matrix, get_rotation_matrix, get_scale_matrix, get_window_to_viewport_matrix
 
 class Renderer:
@@ -38,6 +41,16 @@ class Renderer:
         # Cache de world points calculados em draw_world_entities, reutilizados em draw_radar.
         # Evita recalcular a pipeline T@R@S@vertices duas vezes por entidade por frame.
         self._world_pts_cache = {}
+
+        # Semente para lasers aleatórios no menu (para consistência entre frames se desejado)
+        self._lasers = []
+        import random
+        for _ in range(20):
+            self._lasers.append((
+                random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT),
+                random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT),
+                (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))
+            ))
         
     def _get_polygon_points(self, entity):
         """Aplica a pipeline de transformação (Escala -> Rotação -> Translação) no objeto e retorna vértices no mundo."""
@@ -133,3 +146,49 @@ class Renderer:
         if clipped_pts:
             cor_radar = RED if is_ship else YELLOW
             scanline_fill(self.screen, clipped_pts, cor_radar)
+
+    def draw_start_menu(self, font):
+        """Desenha a composição visual do Menu Inicial para demonstrar os algoritmos."""
+        # 1. Fundo com Gradiente (Scanline Gradient)
+        # Polígono cobrindo a tela toda
+        bg_points = [(0, 0), (SCREEN_WIDTH, 0), (SCREEN_WIDTH, SCREEN_HEIGHT), (0, SCREEN_HEIGHT)]
+        bg_colors = [(0, 0, 50), (0, 0, 50), (0, 0, 0), (0, 0, 0)] # Azul escuro para preto
+        scanline_gradient_fill(self.screen, bg_points, bg_colors)
+
+        # 2. Planeta (Circle + Flood Fill)
+        planet_xc, planet_yc, planet_r = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100
+        midpoint_circle(self.screen, planet_xc, planet_yc, planet_r, (0, 200, 0)) # Borda verde
+        # Preenchimento com Flood Fill (partindo do centro)
+        flood_fill(self.screen, planet_xc, planet_yc, (0, 0, 0, 255), (0, 100, 0)) # Preenche com verde escuro
+        # Observação: usei (0,0,0,255) pq o fundo original era preto. 
+        # Como o gradiente foi desenhado, a cor exata no centro pode variar se não for sólido.
+        # Mas o centro do planeta (SCREEN_WIDTH//2, SCREEN_HEIGHT//2) deve ser escuro o suficiente.
+
+        # 3. Anéis planetários (Ellipse)
+        midpoint_ellipse(self.screen, planet_xc, planet_yc, 180, 40, (200, 200, 100))
+        midpoint_ellipse(self.screen, planet_xc, planet_yc, 200, 50, (150, 150, 50))
+
+        # 4. Lasers de Fundo com Cohen-Sutherland
+        # Janela de clipping no centro
+        clip_margin = 150
+        xmin, ymin = SCREEN_WIDTH // 2 - clip_margin, SCREEN_HEIGHT // 2 - clip_margin
+        xmax, ymax = SCREEN_WIDTH // 2 + clip_margin, SCREEN_HEIGHT // 2 + clip_margin
+        
+        # Desenha borda da janela de clipping (opcional, para visualização)
+        pygame.draw.rect(self.screen, WHITE, (xmin, ymin, xmax-xmin, ymax-ymin), 1)
+
+        for x0, y0, x1, y1, color in self._lasers:
+            clipped = cohen_sutherland_clip(x0, y0, x1, y1, xmin, ymin, xmax, ymax)
+            if clipped:
+                cx0, cy0, cx1, cy1 = clipped
+                bresenham(self.screen, int(cx0), int(cy0), int(cx1), int(cy1), color)
+
+        # 5. UI Text
+        title_text = font.render("ASTEROIDS CG", True, WHITE)
+        self.screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+        
+        start_text = font.render("Press ENTER to Start", True, YELLOW)
+        self.screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT - 100))
+        
+        quit_text = font.render("Press ESC to Quit", True, RED)
+        self.screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, SCREEN_HEIGHT - 60))

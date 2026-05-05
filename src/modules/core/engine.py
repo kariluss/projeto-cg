@@ -17,7 +17,8 @@ class GameEngine:
         pygame.display.set_caption(TITLE)
         self.clock = pygame.time.Clock()
         self.running = True
-        self.state = "RUNNING"
+        self.running = True
+        self.state = "START_MENU"
         
         # CARREGANDO A TEXTURA DA LUA
         # (Certifique-se de ter um arquivo 'moon.jpg' na mesma pasta onde roda o script)
@@ -50,12 +51,33 @@ class GameEngine:
         }
         self.font = pygame.font.Font(None, 36)
 
+    def reset_game(self):
+        """Reseta todas as variáveis do jogo para o estado inicial."""
+        self.ship = Ship()
+        self.ship.position = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
+        self.bullets = []
+        self.asteroids = []
+        
+        # Reset do gerenciador de jogo (score, lives, wave)
+        self.game_manager = GameManager()
+        self.game_manager.initialize(self.asteroids)
+        
+        self.state = "RUNNING"
+
     def _process_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT: self.running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE: self.running = False
                 if event.key == pygame.K_p: self.state = "PAUSED" if self.state == "RUNNING" else "RUNNING"
+                
+                if self.state == "START_MENU":
+                    if event.key == pygame.K_RETURN:
+                        self.reset_game()
+                elif self.state == "GAME_OVER":
+                    if event.key == pygame.K_SPACE:
+                        self.reset_game()
+                
                 if event.key in (pygame.K_LEFT, pygame.K_a): self.ship.rotation_input = -1
                 elif event.key in (pygame.K_RIGHT, pygame.K_d): self.ship.rotation_input = 1
                 if event.key in (pygame.K_UP, pygame.K_w): self.ship.thrust_input = True
@@ -113,17 +135,21 @@ class GameEngine:
             self.game_manager.update_difficulty(self.asteroids)
 
     def _render(self):
-        self.renderer.draw_world_entities(self.ship, self.asteroids, self.bullets, self.textures_map)
-        self.renderer.draw_radar(self.ship, self.asteroids)
+        if self.state == "START_MENU":
+            self.renderer.draw_start_menu(self.font)
+        else:
+            self.renderer.draw_world_entities(self.ship, self.asteroids, self.bullets, self.textures_map)
+            self.renderer.draw_radar(self.ship, self.asteroids)
 
-        # UI e Textos
-        txt = f"Score: {self.game_manager.score} | Lives: {self.game_manager.lives}"
-        self.screen.blit(self.font.render(txt, True, WHITE), (10, 10))
-        
-        if self.state == "GAME_OVER": 
-            self.screen.blit(self.font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2))
-        elif self.state == "PAUSED": 
-            self.screen.blit(self.font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2))
+            # UI e Textos
+            txt = f"Score: {self.game_manager.score} | Lives: {self.game_manager.lives}"
+            self.screen.blit(self.font.render(txt, True, WHITE), (10, 10))
+            
+            if self.state == "GAME_OVER": 
+                self.screen.blit(self.font.render("GAME OVER", True, RED), (SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2 - 20))
+                self.screen.blit(self.font.render("Press SPACE to Restart", True, YELLOW), (SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 20))
+            elif self.state == "PAUSED": 
+                self.screen.blit(self.font.render("PAUSED", True, YELLOW), (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2))
             
         pygame.display.flip()
 
