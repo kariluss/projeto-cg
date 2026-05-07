@@ -146,6 +146,216 @@ def scanline_fill(superficie: pygame.Surface, pontos: list, cor_preenchimento: t
 
                 for x in range(x_inicio, x_fim + 1):
                     setPixel(superficie, x, y, cor_preenchimento)
+
+def midpoint_circle(superficie: pygame.Surface, xc: int, yc: int, r: int, cor: tuple):
+    """Draw a circle on the surface using Midpoint Circle algorithm."""
+    x = 0
+    y = r
+    d = 1 - r
+
+    def _draw_circle_points(s, xc, yc, x, y, cor):
+        setPixel(s, xc + x, yc + y, cor)
+        setPixel(s, xc - x, yc + y, cor)
+        setPixel(s, xc + x, yc - y, cor)
+        setPixel(s, xc - x, yc - y, cor)
+        setPixel(s, xc + y, yc + x, cor)
+        setPixel(s, xc - y, yc + x, cor)
+        setPixel(s, xc + y, yc - x, cor)
+        setPixel(s, xc - y, yc - x, cor)
+
+    _draw_circle_points(superficie, xc, yc, x, y, cor)
+    while x < y:
+        if d < 0:
+            d += 2 * x + 3
+        else:
+            d += 2 * (x - y) + 5
+            y -= 1
+        x += 1
+        _draw_circle_points(superficie, xc, yc, x, y, cor)
+
+def midpoint_ellipse(superficie: pygame.Surface, xc: int, yc: int, rx: int, ry: int, cor: tuple):
+    """Draw an ellipse on the surface using Midpoint Ellipse algorithm."""
+    x = 0
+    y = ry
+    
+    # Region 1
+    d1 = (ry * ry) - (rx * rx * ry) + (0.25 * rx * rx)
+    dx = 2 * ry * ry * x
+    dy = 2 * rx * rx * y
+
+    def _draw_ellipse_points(s, xc, yc, x, y, cor):
+        setPixel(s, xc + x, yc + y, cor)
+        setPixel(s, xc - x, yc + y, cor)
+        setPixel(s, xc + x, yc - y, cor)
+        setPixel(s, xc - x, yc - y, cor)
+
+    while dx < dy:
+        _draw_ellipse_points(superficie, xc, yc, x, y, cor)
+        if d1 < 0:
+            x += 1
+            dx += 2 * ry * ry
+            d1 += dx + (ry * ry)
+        else:
+            x += 1
+            y -= 1
+            dx += 2 * ry * ry
+            dy -= 2 * rx * rx
+            d1 += dx - dy + (ry * ry)
+
+    # Region 2
+    d2 = ((ry * ry) * ((x + 0.5) ** 2)) + ((rx * rx) * ((y - 1) ** 2)) - (rx * rx * ry * ry)
+    while y >= 0:
+        _draw_ellipse_points(superficie, xc, yc, x, y, cor)
+        if d2 > 0:
+            y -= 1
+            dy -= 2 * rx * rx
+            d2 += (rx * rx) - dy
+        else:
+            y -= 1
+            x += 1
+            dx += 2 * ry * ry
+            dy -= 2 * rx * rx
+            d2 += dx - dy + (rx * rx)
+
+def flood_fill(superficie: pygame.Surface, x: int, y: int, target_color: tuple, fill_color: tuple):
+    """Fill a closed area using iterative stack-based Flood Fill algorithm."""
+    if target_color == fill_color:
+        return
+    
+    width, height = superficie.get_size()
+    stack = [(x, y)]
+    
+    # Check if starting point is actually the target color
+    try:
+        if superficie.get_at((x, y))[:3] != target_color[:3]:
+            return
+    except IndexError:
+        return
+
+    visited = set()
+
+    while stack:
+        curr_x, curr_y = stack.pop()
+        
+        if (curr_x, curr_y) in visited:
+            continue
+        
+        if 0 <= curr_x < width and 0 <= curr_y < height:
+            if superficie.get_at((curr_x, curr_y))[:3] == target_color[:3]:
+                setPixel(superficie, curr_x, curr_y, fill_color)
+                visited.add((curr_x, curr_y))
+                stack.append((curr_x + 1, curr_y))
+                stack.append((curr_x - 1, curr_y))
+                stack.append((curr_x, curr_y + 1))
+                stack.append((curr_x, curr_y - 1))
+
+def scanline_gradient_fill(superficie: pygame.Surface, pontos: list, cores: list):
+    """Fill a polygon with a smooth gradient interpolated between vertex colors."""
+    if not pontos or len(pontos) < 3:
+        return
+        
+    ys = [p[1] for p in pontos]
+    y_min, y_max = int(min(ys)), int(max(ys))
+    n = len(pontos)
+
+    for y in range(y_min, y_max):
+        if y < 0 or y >= superficie.get_height():
+            continue
+
+        inter = []
+        for i in range(n):
+            p0, p1 = pontos[i], pontos[(i + 1) % n]
+            c0, c1 = cores[i], cores[(i + 1) % n]
+
+            if p0[1] == p1[1]: continue
+            if p0[1] > p1[1]:
+                p0, p1 = p1, p0
+                c0, c1 = c1, c0
+
+            if y < p0[1] or y >= p1[1]: continue
+
+            t = (y - p0[1]) / (p1[1] - p0[1])
+            x = p0[0] + t * (p1[0] - p0[0])
+            
+            # Interpolate color at the edge
+            r = c0[0] + t * (c1[0] - c0[0])
+            g = c0[1] + t * (c1[1] - c0[1])
+            b = c0[2] + t * (c1[2] - c0[2])
+            inter.append((x, (r, g, b)))
+
+        inter.sort(key=lambda i: i[0])
+
+        for i in range(0, len(inter), 2):
+            if i + 1 >= len(inter): continue
+            
+            x_start, c_start = inter[i]
+            x_end, c_end = inter[i + 1]
+
+            if x_start == x_end: continue
+
+            for x in range(int(round(x_start)), int(round(x_end)) + 1):
+                if x < 0 or x >= superficie.get_width(): continue
+                
+                t_x = (x - x_start) / (x_end - x_start)
+                r = c_start[0] + t_x * (c_end[0] - c_start[0])
+                g = c_start[1] + t_x * (c_end[1] - c_start[1])
+                b = c_start[2] + t_x * (c_end[2] - c_start[2])
+                setPixel(superficie, x, y, (int(r), int(g), int(b)))
+
+def cohen_sutherland_clip(x0, y0, x1, y1, xmin, ymin, xmax, ymax):
+    """Clip a line against a rectangular window using Cohen-Sutherland algorithm."""
+    INSIDE = 0  # 0000
+    LEFT = 1    # 0001
+    RIGHT = 2   # 0010
+    BOTTOM = 4  # 0100
+    TOP = 8     # 1000
+
+    def compute_code(x, y):
+        code = INSIDE
+        if x < xmin: code |= LEFT
+        elif x > xmax: code |= RIGHT
+        if y < ymin: code |= BOTTOM
+        elif y > ymax: code |= TOP
+        return code
+
+    code0 = compute_code(x0, y0)
+    code1 = compute_code(x1, y1)
+    accept = False
+
+    while True:
+        if code0 == 0 and code1 == 0:
+            accept = True
+            break
+        elif (code0 & code1) != 0:
+            break
+        else:
+            x, y = 0.0, 0.0
+            code_out = code0 if code0 != 0 else code1
+            
+            if code_out & TOP:
+                x = x0 + (x1 - x0) * (ymax - y0) / (y1 - y0)
+                y = ymax
+            elif code_out & BOTTOM:
+                x = x0 + (x1 - x0) * (ymin - y0) / (y1 - y0)
+                y = ymin
+            elif code_out & RIGHT:
+                y = y0 + (y1 - y0) * (xmax - x0) / (x1 - x0)
+                x = xmax
+            elif code_out & LEFT:
+                y = y0 + (y1 - y0) * (xmin - x0) / (x1 - x0)
+                x = xmin
+            
+            if code_out == code0:
+                x0, y0 = x, y
+                code0 = compute_code(x0, y0)
+            else:
+                x1, y1 = x, y
+                code1 = compute_code(x1, y1)
+
+    if accept:
+        return (x0, y0, x1, y1)
+    else:
+        return None
                     
 def sutherland_hodgman_clip(poligono, xmin, ymin, xmax, ymax):
     """

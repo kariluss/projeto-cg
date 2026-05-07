@@ -1,5 +1,5 @@
 import random
-import math
+from src.modules.math.math import random_direction
 from src.modules.entities.Entity import Entity
 from src.modules.math.math import Matrix
 
@@ -16,17 +16,18 @@ class Asteroid(Entity):
     
     def __init__(self, position, size=SIZE_LARGE, velocity=None):
         # Matriz base do modelo (-1 a 1)
+        # Modelagem de asteroide hardcoded: polígono de 7 lados levemente imperfeito e assimétrico
         model_data = [
-            [1.0, 0.5, -0.5, -1.0, -0.5,  0.5],
-            [0.0, 0.86, 0.86,  0.0, -0.86, -0.86],
-            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            [ 1.0,  0.5, -0.4, -0.9, -0.6,  0.2,  0.8],
+            [ 0.1,  0.9,  0.8, -0.2, -0.8, -1.0, -0.6],
+            [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0]
         ]
-        super().__init__(Matrix(3, 6, model_data))
+        super().__init__(Matrix(3, 7, model_data))
         
         # Mapeamento UV Automático baseado nos vértices do modelo!
         # Como o modelo vai de -1 a 1, normalizamos para 0 a 1 para pegar a textura.
         self.uvs = []
-        for col in range(6):
+        for col in range(7):
             x = model_data[0][col]
             y = model_data[1][col]
             u = (x + 1.0) / 2.0
@@ -40,9 +41,8 @@ class Asteroid(Entity):
         self.points = self.SIZE_CONFIG[size]["points"]
         
         if velocity is None:
-            angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(1, 3) * self.SIZE_CONFIG[size]["speed_factor"]
-            self.velocity = [speed * math.cos(angle), speed * math.sin(angle)]
+            self.velocity = random_direction(speed)
         else:
             self.velocity = velocity.copy()
         
