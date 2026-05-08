@@ -17,17 +17,8 @@ Este jogo é um clone do clássico arcade de 1979, construído sobre um motor gr
 Certifique-se de ter o Python instalado. Depois, instale o Pygame e execute o módulo principal:
 
 ```bash
-pip install pygame
-python -m src.main
-```
-
-### Via Docker
-
-Se preferir, utilize o Docker para rodar o projeto em um ambiente isolado:
-
-```bash
-docker build -t asteroids-cg .
-docker run -it asteroids-cg
+pip install -r requirements.txt
+python main.py
 ```
 
 ## 🎮 Controles
